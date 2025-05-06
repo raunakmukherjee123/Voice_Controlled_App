@@ -1,0 +1,1 @@
+export const GITHUB_TOKEN = 'replace-with-personal-access-token'; 

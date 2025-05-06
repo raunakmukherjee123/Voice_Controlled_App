@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Facebook Auth Callback</title>
+</head>
+<body>
+    <script>
+        // Get the authorization code from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const error = urlParams.get('error');
+
+        if (error) {
+            // Handle error
+            window.opener.postMessage({
+                type: 'facebook-auth-error',
+                error: error
+            }, window.location.origin);
+            window.close();
+        } else if (code) {
+            // Get user data using the code
+            fetch('https://graph.facebook.com/v12.0/oauth/access_token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    code: code,
+                    client_id: 'YOUR_FACEBOOK_APP_ID',
+                    client_secret: 'YOUR_FACEBOOK_APP_SECRET', // This should be handled securely
+                    redirect_uri: window.location.href,
+                    grant_type: 'authorization_code'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.access_token) {
+                    // Get user profile
+                    return fetch(`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${data.access_token}`)
+                    .then(response => response.json())
+                    .then(userData => {
+                        // Send data back to parent window
+                        window.opener.postMessage({
+                            type: 'facebook-auth-success',
+                            code: code,
+                            userData: userData
+                        }, window.location.origin);
+                        window.close();
+                    });
+                }
+                throw new Error('Failed to get access token');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                window.opener.postMessage({
+                    type: 'facebook-auth-error',
+                    error: error.message
+                }, window.location.origin);
+                window.close();
+            });
+        }
+    </script>
+</body>
+</html> 

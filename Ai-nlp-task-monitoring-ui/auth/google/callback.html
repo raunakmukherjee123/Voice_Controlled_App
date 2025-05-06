@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google Auth Callback</title>
+</head>
+<body>
+    <script>
+        // Get the authorization code from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const error = urlParams.get('error');
+
+        if (error) {
+            console.error('Google Auth Error:', error);
+            window.opener.postMessage({
+                type: 'google-auth-error',
+                error: error
+            }, window.location.origin);
+            window.close();
+        } else if (code) {
+            console.log('Authorization Code:', code);
+            
+            fetch('https://www.googleapis.com/oauth2/v3/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    code: code,
+                    client_id: 'replace-with-client-id',
+                    client_secret: 'replace-with-client-secret',
+                    redirect_uri: 'http://localhost:5500/class%208/todoUi/todoUi/UI/callback.html/',
+                    grant_type: 'authorization_code'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Token Response:', data);
+                
+                if (data.access_token) {
+                    // Get user profile
+                    return fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+                        headers: {
+                            'Authorization': `Bearer ${data.access_token}`
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(userData => {
+                        console.log('User Profile Data:', userData);
+                        
+                        window.opener.postMessage({
+                            type: 'google-auth-success',
+                            code: code,
+                            userData: userData
+                        }, window.location.origin);
+                        window.close();
+                    });
+                }
+                throw new Error('Failed to get access token');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                window.opener.postMessage({
+                    type: 'google-auth-error',
+                    error: error.message
+                }, window.location.origin);
+                window.close();
+            });
+        }
+    </script>
+</body>
+</html> 
